@@ -4,6 +4,14 @@ import pandas as pd
 import numpy as np
 import datetime 
 
+def get_ticker_desc():
+    """
+    Gets the description for the tickers
+    returns: A pandas dataframe with ticker type description
+    """
+    ticker_desc = pd.read_csv("C:\\Users\\U447354\\Documents\\Python Scripts\\Beta\\Ticker_Desc.csv",index_col=0,header=0)
+    return(ticker_desc)
+    
 def get_last_prices():
     """
     Gets the data from the system"
@@ -34,10 +42,10 @@ def get_trade_history():
     
 def get_dict_index_instrument():
     """
-    Gets all the trade history for the client
-    returns: The client trade history data
+    Gets all the Instrument Information in the System
+    returns: The ticker information in the system
     """
-    dict_instrument = pd.read_csv("C:\\Users\\U447354\\Documents\\Python Scripts\\Beta\\Dict_Inst.csv",index_col=0,header=0)
+    dict_instrument = pd.read_csv("C:\\Users\\U447354\\Documents\\Python Scripts\\Beta\\Dict_Inst2.csv",index_col=0,header=0)
     return(dict_instrument)
 
 def get_inventory_price(trade_history,inventory_method='Average'):
@@ -47,7 +55,7 @@ def get_inventory_price(trade_history,inventory_method='Average'):
     returns: A dataframe with the summary information for the client
     """
     tickers= np.unique(trade_history['Asset'].values)
-    columns = ['Quantity','Holding Price', '30_day_Flag']
+    columns = ['Quantity','Holding Price', '30_day_flag']
     portfolio = pd.DataFrame(index=tickers , columns=columns)
     #day_analysis = datetime.datetime.today()
     day_analysis = datetime.datetime(2016,11,16)
@@ -62,26 +70,77 @@ def get_inventory_price(trade_history,inventory_method='Average'):
             portfolio.ix[ticker,:]=[total_quantity, portfolio_value/total_quantity, flag_trade]        
     return(portfolio)
 
-def get_volatility(data):
+def get_financial_metrics(data):
+    """
+    The funtion process a dayly dataset and yields out the volatility and correlation of each of the columns
+    params: data: A dataframe with financial dayly data
+    returns: A dataframe with the volatility of the returns
+    returns: A dataframe with the correlation of the returns
+    """
+    returns = (data/data.shift(-1)-1)
+    vol = returns.std()
+    corr_matrix = returns.corr()
+    return(vol,corr_matrix)
+
+def get_costs():
+    """
+    Gets all the cost related to the investable instruments
+    returns: A dataframe with the cost summary table
+    """    
+    cost_summary = pd.read_csv("C:\\Users\\U447354\\Documents\\Python Scripts\\Beta\\Dict_Cost.csv",index_col=0,header=0)
+    return(cost_summary)    
+
+def best_rank(ticker_list):
+    """
+    Gets the replacement ranking of the instruments and use it to rank the tickers entered
+    returns: The ticker best ranked among the list
+    """    
+    dict_inst = get_dict_index_instrument()
+    best_ranked = dict_inst.ix[ticker_list]['Ranking'].idxmax()
+    return(best_ranked)
+
+def get_replacement(portfolio, dict_instrument):
+    """
+    Gets a ranking of Investable instruments for each index and decide how to replace the current investable
+    returns: A dataframe with the portfolio replacements for each holding
+    """
+  
+    #This condition activates the wash sale rule advoiding
+    replace_portf = portfolio[portfolio['30_day_flag'] == False].index.values
+    #Creates the replacement Data Structure
+    order_replace = pd.DataFrame(index=replace_portf , columns=['Replacement'])      
+    
+    for ticker in replace_portf:
+        (asset_class,index_related) = dict_instrument.ix[ticker].values[[0,2]]
+        #This condition works out: The wash sale rule selecting a substantially different instrument
+        #also it only selects investable instruments
+        prospective_tickers = dict_instrument[
+        (dict_instrument[ 'Asset_class' ] == asset_class) & \
+        (dict_instrument[ 'Index_R' ] != index_related) & \
+        (~ dict_instrument[ 'Index_R' ].isnull() )].index.values
+        
+        #Use an algorithm to select the better replacement (Thinking in the fund selection algorithm)
+        order_replace.ix[ticker] = best_rank(prospective_tickers)
+    return(order_replace) 
+
+def extend_portfolio(portfolio,vol_vector):
     """
     The funtion process a dayly dataset and yields out the volatility of each of the columns
     params: data: A dataframe with financial dayly data
     returns: A dataframe with the volatility of the returns
     """
-    returns = (data/data.shift(-1)-1)
-    vol = returns.std()
-    return(vol)
-
-def extend_portfolio(portfolio,vol_vector):
     
+    pass
 
 if __name__ == "__main__":
     today = datetime.datetime.today()
+    ticker_desc = get_ticker_desc()
     data_day = get_last_prices()
     holdings = get_portfolio()
     trade_history = get_trade_history()
     dict_instrument = get_dict_index_instrument()
     portfolio = get_inventory_price(trade_history)
-    vol_vector = get_volatility(data_day)
-    
+    (vol_vector,corr_matrix) = get_financial_metrics(data_day)
+    replacement_pairs = get_replacement(portfolio, dict_instrument)
     print(portfolio)
+    

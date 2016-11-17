@@ -1,0 +1,9 @@
+Ticker,Asset_class,Instrument_type,Index_R,Ranking
+CRSPTMT,US Stock Market,Index,,
+VTSMX,US Stock Market,ETF,CRSPTMT,8
+DWCF,US Stock Market,Index,,
+SWTSX,US Stock Market,ETF,DWCF,9.2
+STOXX50E,Europe Stock Market,Index,,
+FEZ,Europe Stock Market,ETF,STOXX50E,9.1
+^FTSE,Europe Stock Market,Index,,
+VE.TO,Europe Stock Market,ETF,^FTSE,8.5
